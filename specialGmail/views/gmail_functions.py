@@ -1,11 +1,17 @@
+# -*- coding: utf-8 -*-
+# encoding=utf8
+from __future__ import print_function
+
+from logging import exception
+
 __author__ = 'RishabhBhatia'
 
-from __future__ import print_function
 import httplib2
 import os
 import base64
 import email
 import oauth2client
+import sys
 from apiclient import errors
 from apiclient import discovery
 from django.conf import settings
@@ -14,19 +20,18 @@ from oauth2client import tools
 
 try:
     import argparse
-    flags = argparse.ArgumentParser(parents=[tools.argparser]).parse_args()
+    flags = argparse.ArgumentParser(parents=[tools.argparser])
 except ImportError:
     flags = None
+
 
 # If modifying these scopes, delete your previously saved credentials
 # at ~/.credentials/gmail-python-quickstart.json
 SCOPES = 'https://mail.google.com/ https://www.googleapis.com/auth/gmail.compose https://www.googleapis.com/auth/gmail.labels https://www.googleapis.com/auth/gmail.insert https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/gmail.readonly'
-CLIENT_SECRET_FILE = 'client_secret.json'
+CLIENT_SECRET_FILE = '/Users/rcipher222/final-chutiyapa/SpecialMedia/client_secret.json'
 APPLICATION_NAME = 'Gmail API Python Quickstart'
 
-
 def get_credentials():
-
     home_dir = os.path.expanduser('~')
     credential_dir = os.path.join(home_dir, '.credentials')
     if not os.path.exists(credential_dir):
@@ -91,7 +96,7 @@ def GetMessage(service, user_id, msg_id):
   try:
     message = service.users().messages().get(userId=user_id, id=msg_id).execute()
 
-    print (message['snippet'])
+    # print (message['snippet'])
 
     return message
   except errors.HttpError, error:
@@ -103,7 +108,7 @@ def GetMimeMessage(service, user_id, msg_id):
     message = service.users().messages().get(userId=user_id, id=msg_id,
                                              format='raw').execute()
 
-    print (message['snippet'])
+    # print (message['snippet'])
 
     msg_str = base64.urlsafe_b64decode(message['raw'].encode('ASCII'))
 
@@ -127,5 +132,12 @@ def unreadMessages(service,user_id):
 
     f = open(settings.TEXT_TO_SPEECH_FILE_NAME,'w')
     for msg in messages:
-        f.write(msg['snippet'] +'\n')
+        # print(msg)
+        # print(messages[msg])
+        try:
+            # print("writing",messages[msg]['snippet'],"from:",messages[msg]['payload']['headers'][3]['value'])
+            s = messages[msg]['snippet'].encode('ascii', 'ignore').decode('ascii')
+            f.write("mail from "+messages[msg]['payload']['headers'][3]['value'][1:-1]+" is "+s +'\n')
+        except Exception as e:
+            print(e)
 

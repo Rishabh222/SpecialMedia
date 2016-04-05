@@ -1,11 +1,10 @@
-from specialGmail.views.gmail_functions import authenticateUser, unreadMessages
-
 __author__ = 'RishabhBhatia'
-
+# encoding=utf8
 from django.core.management import BaseCommand
 import sched, time
 from django.conf import settings
 import os
+from specialGmail.views.gmail_functions import authenticateUser, unreadMessages
 
 read_settimgs = settings.READ_INSTRUCTION_SETTINGS
 
@@ -32,12 +31,16 @@ def start_reading(sc, last_read_time=0):
         statbuf = os.stat(settings.SPEECH_TO_TEXT_FILE_NAME)
         if statbuf.st_mtime > last_read_time:
             lines = f.readlines()
+            last_read_time = statbuf.st_mtime
             x=lines[0].split()
+            print x
             if "mails" in x:
                 service = authenticateUser()
                 if "unread" in x:
                     unreadMessages(service,'me')
-            last_read_time = statbuf.st_mtime
+                elif "send" in x:
+                    pass
+
             f.close()
 
         sc.enter(read_settimgs.get('BATCH_TIME_INTERVAL'), 1, start_reading, (sc,last_read_time,))
