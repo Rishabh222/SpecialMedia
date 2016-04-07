@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # encoding=utf8
-from __future__ import print_function
+# from __future__ import print_function
 
 from logging import exception
 
@@ -10,13 +10,18 @@ import httplib2
 import os
 import base64
 import email
+import mimetypes
 import oauth2client
-import sys
-from apiclient import errors
 from apiclient import discovery
 from django.conf import settings
 from oauth2client import client
 from oauth2client import tools
+from email.mime.audio import MIMEAudio
+from email.mime.base import MIMEBase
+from email.mime.image import MIMEImage
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from apiclient import errors
 
 try:
     import argparse
@@ -96,7 +101,7 @@ def GetMessage(service, user_id, msg_id):
   try:
     message = service.users().messages().get(userId=user_id, id=msg_id).execute()
 
-    # print (message['snippet'])
+    print (message['snippet'])
 
     return message
   except errors.HttpError, error:
@@ -108,7 +113,7 @@ def GetMimeMessage(service, user_id, msg_id):
     message = service.users().messages().get(userId=user_id, id=msg_id,
                                              format='raw').execute()
 
-    # print (message['snippet'])
+    print (message['snippet'])
 
     msg_str = base64.urlsafe_b64decode(message['raw'].encode('ASCII'))
 
@@ -122,6 +127,7 @@ def authenticateUser():
     credentials = get_credentials()
     http = credentials.authorize(httplib2.Http())
     service = discovery.build('gmail', 'v1', http=http)
+    print "authenticated"
     return service
 
 def unreadMessages(service,user_id):
@@ -129,11 +135,11 @@ def unreadMessages(service,user_id):
     messages={}
     for list_unread_messages_id in list_unread_messages_ids:
         messages[list_unread_messages_id['id']]=GetMessage(service,user_id,list_unread_messages_id['id'])
-
     f = open(settings.TEXT_TO_SPEECH_FILE_NAME,'w')
     for msg in messages:
         # print(msg)
         # print(messages[msg])
+        print ("writing",messages[msg]['snippet'])
         try:
             # print("writing",messages[msg]['snippet'],"from:",messages[msg]['payload']['headers'][3]['value'])
             s = messages[msg]['snippet'].encode('ascii', 'ignore').decode('ascii')
@@ -141,3 +147,62 @@ def unreadMessages(service,user_id):
         except Exception as e:
             print(e)
 
+
+
+def SendMessage(service, user_id, message):
+  try:
+    message = (service.users().messages().send(userId=user_id, body=message)
+               .execute())
+    print 'Message Id: %s' % message['id']
+    return message
+  except errors.HttpError, error:
+    print 'An error occurred: %s' % error
+
+
+def CreateMessage(sender, to, subject, message_text):
+  message = MIMEText(message_text)
+  message['to'] =to
+  message['from'] = sender
+  message['subject'] = subject
+  return {'raw': base64.urlsafe_b64encode(message.as_string())}
+
+
+def CreateMessageWithAttachment(
+    sender, to, subject, message_text, file_dir, filename):
+
+  message = MIMEMultipart()
+  message['to']=to
+  message['from'] = sender
+  message['subject'] = subject
+
+  msg = MIMEText(message_text)
+  message.attach(msg)
+
+  path = os.path.join(file_dir, filename)
+  content_type, encoding = mimetypes.guess_type(path)
+
+  if content_type is None or encoding is not None:
+    content_type = 'application/octet-stream'
+  main_type, sub_type = content_type.split('/', 1)
+  if main_type == 'text':
+    fp = open(path, 'rb')
+    msg = MIMEText(fp.read(), _subtype=sub_type)
+    fp.close()
+  elif main_type == 'image':
+    fp = open(path, 'rb')
+    msg = MIMEImage(fp.read(), _subtype=sub_type)
+    fp.close()
+  elif main_type == 'audio':
+    fp = open(path, 'rb')
+    msg = MIMEAudio(fp.read(), _subtype=sub_type)
+    fp.close()
+  else:
+    fp = open(path, 'rb')
+    msg = MIMEBase(main_type, sub_type)
+    msg.set_payload(fp.read())
+    fp.close()
+
+  msg.add_header('Content-Disposition', 'attachment', filename=filename)
+  message.attach(msg)
+
+  return {'raw': base64.urlsafe_b64encode(message.as_string())}
