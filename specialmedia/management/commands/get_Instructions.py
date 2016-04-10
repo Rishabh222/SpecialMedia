@@ -42,7 +42,7 @@ def start_reading(sc, last_read_time=0):
                 elif "send" in x:
                     to_mail_ids = re.findall(r'[\w\.-]+@[\w\.-]+',lines[0])
                     f = open(settings.TEXT_TO_SPEECH_FILE_NAME,'w')
-                    f.write("what message text u want to send")
+                    f.write("what message text u want to send ?")
                     time.sleep(10)
                     f = open(settings.SPEECH_TO_TEXT_FILE_NAME,'r')
                     lines = f.readlines()
@@ -52,6 +52,15 @@ def start_reading(sc, last_read_time=0):
                     print "mail sent"
                     f = open(settings.TEXT_TO_SPEECH_FILE_NAME,'w')
                     f.write("Mail sent to "+" ".join(to_mail_ids))
+                elif "delete" in x:
+                    del_mail_ids = re.findall(r'[\w\.-]+@[\w\.-]+',lines[0])
+                    f = open(settings.TEXT_TO_SPEECH_FILE_NAME,'w')
+                    f.write("which message u want to delete ?")
+                    time.sleep(10)
+                    f = open(settings.SPEECH_TO_TEXT_FILE_NAME,'r')
+                    lines = f.readlines()
+
+
             f.close()
 
         sc.enter(read_settimgs.get('BATCH_TIME_INTERVAL'), 1, start_reading, (sc,last_read_time,))
