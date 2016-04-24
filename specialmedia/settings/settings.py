@@ -11,7 +11,8 @@ ALLOWED_HOSTS = ['*']
 
 INSTALLED_APPS = (
     'specialmedia',
-    'specialGmail'
+    'specialGmail',
+    'rest_framework'
 )
 
 MIDDLEWARE_CLASSES = (

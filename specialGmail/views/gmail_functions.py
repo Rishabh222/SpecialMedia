@@ -26,16 +26,17 @@ from apiclient import errors
 
 try:
     import argparse
+
     flags = argparse.ArgumentParser(parents=[tools.argparser])
 except ImportError:
     flags = None
-
 
 # If modifying these scopes, delete your previously saved credentials
 # at ~/.credentials/gmail-python-quickstart.json
 SCOPES = 'https://mail.google.com/ https://www.googleapis.com/auth/gmail.compose https://www.googleapis.com/auth/gmail.labels https://www.googleapis.com/auth/gmail.insert https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/gmail.readonly'
 CLIENT_SECRET_FILE = '/Users/rcipher222/final-chutiyapa/SpecialMedia/client_secret.json'
 APPLICATION_NAME = 'Gmail API Python Quickstart'
+
 
 def get_credentials():
     home_dir = os.path.expanduser('~')
@@ -52,77 +53,77 @@ def get_credentials():
         flow.user_agent = APPLICATION_NAME
         if flags:
             credentials = tools.run_flow(flow, store, flags)
-        else: # Needed only for compatibility with Python 2.6
+        else:  # Needed only for compatibility with Python 2.6
             credentials = tools.run(flow, store)
         print('Storing credentials to ' + credential_path)
     return credentials
 
+
 def ListMessagesMatchingQuery(service, user_id, query=''):
+    try:
+        response = service.users().messages().list(userId=user_id,
+                                                   q=query).execute()
+        messages = []
+        if 'messages' in response:
+            messages.extend(response['messages'])
 
-  try:
-    response = service.users().messages().list(userId=user_id,
-                                               q=query).execute()
-    messages = []
-    if 'messages' in response:
-      messages.extend(response['messages'])
+        while 'nextPageToken' in response:
+            page_token = response['nextPageToken']
+            response = service.users().messages().list(userId=user_id, q=query,
+                                                       pageToken=page_token).execute()
+            messages.extend(response['messages'])
 
-    while 'nextPageToken' in response:
-      page_token = response['nextPageToken']
-      response = service.users().messages().list(userId=user_id, q=query,
-                                         pageToken=page_token).execute()
-      messages.extend(response['messages'])
+        return messages
+    except errors.HttpError, error:
+        print(error)
 
-    return messages
-  except errors.HttpError, error:
-    print(error)
 
 def ListMessagesWithLabels(service, user_id, label_ids=[]):
+    try:
+        response = service.users().messages().list(userId=user_id,
+                                                   labelIds=label_ids).execute()
+        messages = []
+        if 'messages' in response:
+            messages.extend(response['messages'])
 
-  try:
-    response = service.users().messages().list(userId=user_id,
-                                               labelIds=label_ids).execute()
-    messages = []
-    if 'messages' in response:
-      messages.extend(response['messages'])
+        while 'nextPageToken' in response:
+            page_token = response['nextPageToken']
+            response = service.users().messages().list(userId=user_id,
+                                                       labelIds=label_ids,
+                                                       pageToken=page_token).execute()
+            messages.extend(response['messages'])
 
-    while 'nextPageToken' in response:
-      page_token = response['nextPageToken']
-      response = service.users().messages().list(userId=user_id,
-                                                 labelIds=label_ids,
-                                                 pageToken=page_token).execute()
-      messages.extend(response['messages'])
-
-    return messages
-  except errors.HttpError, error:
-    print (error)
+        return messages
+    except errors.HttpError, error:
+        print (error)
 
 
 def GetMessage(service, user_id, msg_id):
+    try:
+        message = service.users().messages().get(userId=user_id, id=msg_id).execute()
 
-  try:
-    message = service.users().messages().get(userId=user_id, id=msg_id).execute()
+        # print (message['snippet'])
 
-    print (message['snippet'])
-
-    return message
-  except errors.HttpError, error:
-    print(error)
+        return message
+    except errors.HttpError, error:
+        print(error)
 
 
 def GetMimeMessage(service, user_id, msg_id):
-  try:
-    message = service.users().messages().get(userId=user_id, id=msg_id,
-                                             format='raw').execute()
+    try:
+        message = service.users().messages().get(userId=user_id, id=msg_id,
+                                                 format='raw').execute()
 
-    print (message['snippet'])
+        print (message['snippet'])
 
-    msg_str = base64.urlsafe_b64decode(message['raw'].encode('ASCII'))
+        msg_str = base64.urlsafe_b64decode(message['raw'].encode('ASCII'))
 
-    mime_msg = email.message_from_string(msg_str)
+        mime_msg = email.message_from_string(msg_str)
 
-    return mime_msg
-  except errors.HttpError, error:
-    print (error)
+        return mime_msg
+    except errors.HttpError, error:
+        print (error)
+
 
 def authenticateUser():
     credentials = get_credentials()
@@ -131,86 +132,174 @@ def authenticateUser():
     print "authenticated"
     return service
 
-def unreadMessages(service,user_id):
-    list_unread_messages_ids = ListMessagesMatchingQuery(service,user_id,'label:unread')
-    messages={}
+
+def unreadMessages(service, user_id):
+    list_unread_messages_ids = ListMessagesMatchingQuery(service, user_id, 'label:unread')
+    messages = {}
+    f = open(settings.TEXT_TO_SPEECH_FILE_NAME, 'w')
     for list_unread_messages_id in list_unread_messages_ids:
-        messages[list_unread_messages_id['id']]=GetMessage(service,user_id,list_unread_messages_id['id'])
-    f = open(settings.TEXT_TO_SPEECH_FILE_NAME,'w')
+        messages[list_unread_messages_id['id']] = GetMessage(service, user_id, list_unread_messages_id['id'])
+
     for msg in messages:
         # print(msg)
         # print(messages[msg])
-        print ("writing",messages[msg]['snippet'])
+        # print ("writing", messages[msg]['snippet'])
         try:
             # print("writing",messages[msg]['snippet'],"from:",messages[msg]['payload']['headers'][3]['value'])
             s = messages[msg]['snippet'].encode('ascii', 'ignore').decode('ascii')
-            f.write("mail from "+messages[msg]['payload']['headers'][3]['value'][1:-1]+" is "+s +'\n')
+            frm = ""
+
+            if messages[msg]['payload']['headers'][17][u'name'] == 'From':
+                frm = messages[msg]['payload']['headers'][17][u'value']
+                f.write("mail from " + frm + " is " + s + '\n')
+            else:
+                for headers in messages[msg]['payload']['headers']:
+                    if headers['name'] == 'From':
+                        frm = headers[u'value']
+                        f.write("mail from " + frm + " is " + s + '\n')
+                        break
+
+            if frm == "":
+                f.write("mail from " + messages[msg]['payload']['headers'][3]['value'][1:-1] + " is " + s + '\n')
+
         except Exception as e:
             print(e)
 
 
+def GetSubjects(service, user_id, query):
+    # print query
+    list_messages_ids = ListMessagesMatchingQuery(service, user_id, 'label:unread '+query)
+
+    f = open(settings.TEXT_TO_SPEECH_FILE_NAME, 'w')
+    messages = {}
+    subj_id_mapping = {}
+    for list_messages_id in list_messages_ids:
+        messages[list_messages_id['id']] = GetMessage(service, user_id, list_messages_id['id'])
+        subject = ""
+        # print messages[list_messages_id['id']]['payload']['headers'][16]
+        if messages[list_messages_id['id']]['payload']['headers'][16][u'name'] == 'Subject':
+            subject = messages[list_messages_id['id']]['payload']['headers'][16][u'value']
+            if len(subject) == 0:
+                f.write(
+                    "No Subject " + messages[list_messages_id['id']]['snippet'].encode('ascii', 'ignore').decode(
+                        'ascii') + '\n')
+            else:
+                f.write(subject + '\n')
+                # print (subject,"1")
+        else:
+            for headers in messages[list_messages_id['id']]['payload']['headers']:
+
+                if headers[u'name'] == 'Subject':
+                    subject = headers[u'value']
+                    if len(subject) == 0:
+                        f.write(
+                            "No Subject ... content is " + messages[list_messages_id['id']]['snippet'].encode('ascii',
+                                                                                                              'ignore').decode(
+                                'ascii') + '\n')
+                    else:
+                        f.write(" " + subject + '\n')
+                    # print subject,"2"
+                    break
+        # print subject,"3"
+        if len(subject) == 0:
+            subj_id_mapping[list_messages_id['id']] = "No Subject"
+        else:
+            subj_id_mapping[list_messages_id['id']] = subject
+
+    for x in subj_id_mapping:
+        print subj_id_mapping[x]
+    return subj_id_mapping
+    # print messages
+
+    # for msg in messages:
+    #     print {"=======>\n\n", messages[msg]['payload']['headers'][16], messages[msg]['payload']['headers'][17],
+    #            messages[msg]['payload']['headers'][15], "\n\n<======"}
+    #
+    #     try:
+    #         # s = messages[msg]['snippet'].encode('ascii', 'ignore').decode('ascii')
+    #
+    #         if messages[msg]['payload']['headers'][16]['name'] is "subject":
+    #             subject =  messages[msg]['payload']['headers'][16]['value']
+    #             f.write( subject + '\n')
+    #         else:
+    #             for headers in messages[msg]['payload']['headers']:
+    #                 if headers['name'] is 'from':
+    #                     subject = messages[msg]['payload']['headers'][16]['value']
+    #                     f.write(" " + subject + '\n')
+    #                     break
+    #         if messages[msg]['payload']['headers'][15]['name'] is "Message-ID":
+    #             msg_id = messages[msg]['payload']['headers'][15]['value']
+    #         else:
+    #             for headers in messages[msg]['payload']['headers']:
+    #                 if headers['name'] is 'Message-ID':
+    #                     msg_id = headers['value']
+    #
+    #         subj_id_mapping = {"msg_id":msg_id,"subject":subject}
+    #     except Exception as e:
+    #         print(e)
+
 
 def SendMessage(service, user_id, message):
-  try:
-    message = (service.users().messages().send(userId=user_id, body=message)
-               .execute())
-    print 'Message Id: %s' % message['id']
-    return message
-  except errors.HttpError, error:
-    print 'An error occurred: %s' % error
+    try:
+        message = (service.users().messages().send(userId=user_id, body=message)
+                   .execute())
+        print 'Message Id: %s' % message['id']
+        return message
+    except errors.HttpError, error:
+        print 'An error occurred: %s' % error
 
 
 def CreateMessage(sender, to, subject, message_text):
-  message = MIMEText(message_text)
-  message['to'] =to
-  message['from'] = sender
-  message['subject'] = subject
-  return {'raw': base64.urlsafe_b64encode(message.as_string())}
+    message = MIMEText(message_text)
+    message['to'] = to
+    message['from'] = sender
+    message['subject'] = subject
+    return {'raw': base64.urlsafe_b64encode(message.as_string())}
 
 
 def CreateMessageWithAttachment(
-    sender, to, subject, message_text, file_dir, filename):
+        sender, to, subject, message_text, file_dir, filename):
+    message = MIMEMultipart()
+    message['to'] = to
+    message['from'] = sender
+    message['subject'] = subject
 
-  message = MIMEMultipart()
-  message['to']=to
-  message['from'] = sender
-  message['subject'] = subject
+    msg = MIMEText(message_text)
+    message.attach(msg)
 
-  msg = MIMEText(message_text)
-  message.attach(msg)
+    path = os.path.join(file_dir, filename)
+    content_type, encoding = mimetypes.guess_type(path)
 
-  path = os.path.join(file_dir, filename)
-  content_type, encoding = mimetypes.guess_type(path)
+    if content_type is None or encoding is not None:
+        content_type = 'application/octet-stream'
+    main_type, sub_type = content_type.split('/', 1)
+    if main_type == 'text':
+        fp = open(path, 'rb')
+        msg = MIMEText(fp.read(), _subtype=sub_type)
+        fp.close()
+    elif main_type == 'image':
+        fp = open(path, 'rb')
+        msg = MIMEImage(fp.read(), _subtype=sub_type)
+        fp.close()
+    elif main_type == 'audio':
+        fp = open(path, 'rb')
+        msg = MIMEAudio(fp.read(), _subtype=sub_type)
+        fp.close()
+    else:
+        fp = open(path, 'rb')
+        msg = MIMEBase(main_type, sub_type)
+        msg.set_payload(fp.read())
+        fp.close()
 
-  if content_type is None or encoding is not None:
-    content_type = 'application/octet-stream'
-  main_type, sub_type = content_type.split('/', 1)
-  if main_type == 'text':
-    fp = open(path, 'rb')
-    msg = MIMEText(fp.read(), _subtype=sub_type)
-    fp.close()
-  elif main_type == 'image':
-    fp = open(path, 'rb')
-    msg = MIMEImage(fp.read(), _subtype=sub_type)
-    fp.close()
-  elif main_type == 'audio':
-    fp = open(path, 'rb')
-    msg = MIMEAudio(fp.read(), _subtype=sub_type)
-    fp.close()
-  else:
-    fp = open(path, 'rb')
-    msg = MIMEBase(main_type, sub_type)
-    msg.set_payload(fp.read())
-    fp.close()
+    msg.add_header('Content-Disposition', 'attachment', filename=filename)
+    message.attach(msg)
 
-  msg.add_header('Content-Disposition', 'attachment', filename=filename)
-  message.attach(msg)
+    return {'raw': base64.urlsafe_b64encode(message.as_string())}
 
-  return {'raw': base64.urlsafe_b64encode(message.as_string())}
 
 def DeleteMessage(service, user_id, msg_id):
-  try:
-    service.users().messages().delete(userId=user_id, id=msg_id).execute()
-    print 'Message with id: %s deleted successfully.' % msg_id
-  except errors.HttpError, error:
-    print 'An error occurred: %s' % error
+    try:
+        service.users().messages().delete(userId=user_id, id=msg_id).execute()
+        print 'Message with id: %s deleted successfully.' % msg_id
+    except errors.HttpError, error:
+        print 'An error occurred: %s' % error
