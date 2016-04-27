@@ -81,7 +81,7 @@ def ListMessagesMatchingQuery(service, user_id, query=''):
 def ListMessagesWithLabels(service, user_id, label_ids=[]):
     try:
         response = service.users().messages().list(userId=user_id,
-                                                       labelIds=label_ids).execute()
+                                                   labelIds=label_ids).execute()
         messages = []
         if 'messages' in response:
             messages.extend(response['messages'])
@@ -142,9 +142,10 @@ def unreadMessages(service, user_id):
 
     writeGivenMessageIds(messages)
 
+
 def readTopUnreadMails(service, maxResults):
     response = service.users().messages().list(userId='me',
-                                                   q='label:unread',maxResults=maxResults).execute()
+                                               q='label:unread', maxResults=maxResults).execute()
     list_top_unread_messages_ids = []
     if 'messages' in response:
         list_top_unread_messages_ids.extend(response['messages'])
@@ -153,6 +154,8 @@ def readTopUnreadMails(service, maxResults):
         messages[list_messages_id['id']] = GetMessage(service, 'me', list_messages_id['id'])
 
     writeGivenMessageIds(messages)
+
+
 def readTopMails(service, maxResults):
     response = service.users().messages().list(userId='me', maxResults=maxResults).execute()
     list_top_read_messages_ids = []
@@ -165,8 +168,9 @@ def readTopMails(service, maxResults):
 
     writeGivenMessageIds(messages)
 
+
 def GetSubjects(service, user_id, query):
-    list_messages_ids = ListMessagesMatchingQuery(service, user_id, 'label:unread ' + query)
+    list_messages_ids = ListMessagesMatchingQuery(service, user_id, query)
 
     messages = {}
     all_subjects = ""
@@ -258,6 +262,10 @@ def CreateMessage(sender, to, subject, message_text):
     message['to'] = to
     message['from'] = sender
     message['subject'] = subject
+    try:
+        print message.as_string()
+    except Exception as e:
+        print(e)
     return {'raw': base64.urlsafe_b64encode(message.as_string())}
 
 
@@ -308,8 +316,9 @@ def DeleteMessage(service, user_id, msg_id):
     except errors.HttpError, error:
         print 'An error occurred: %s' % error
 
+
 def writeGivenMessageIds(messages={}):
-    write_msg=""
+    write_msg = ""
     for msg in messages:
         try:
             # print("writing",messages[msg]['snippet'],"from:",messages[msg]['payload']['headers'][3]['value'])
@@ -338,3 +347,89 @@ def writeGivenMessageIds(messages={}):
     f = open(settings.TEXT_TO_SPEECH_FILE_NAME, 'w')
     f.write(write_msg)
     f.close()
+
+
+def CreateDraft(service, user_id, message_body):
+    try:
+        message = {'message': message_body}
+        draft = service.users().drafts().create(userId=user_id, body=message).execute()
+
+        print 'Draft id: %s\nDraft message: %s' % (draft['id'], draft['message'])
+
+        return draft
+    except errors.HttpError, error:
+        print 'An error occurred: %s' % error
+        return None
+
+
+def ListDrafts(service, user_id, query):
+    try:
+        response = service.users().drafts().list(userId=user_id).execute()
+        drafts = response['drafts']
+        for draft in drafts:
+            print 'Draft id: %s' % draft['id']
+        return drafts
+    except errors.HttpError, error:
+        print 'An error occurred: %s' % error
+
+
+def GetDraft(service, user_id, draft_id):
+    try:
+        print user_id,draft_id
+        draft = service.users().drafts().get(user_id=user_id, id=draft_id).execute()
+        print 'Draft id: %s\nDraft message: %s' % (draft['id'], draft['message'])
+
+        return draft
+    except errors.HttpError, error:
+        print 'An error occurred: %s' % error
+
+
+def GetDraftSubjects(service, user_id, query):
+    list_draft_ids = ListDrafts(service, user_id, query)
+    print list_draft_ids
+    drafts = {}
+    all_subjects = ""
+    subj_id_mapping = {}
+    for list_draft_id in list_draft_ids:
+        print list_draft_id['id']
+        drafts[list_draft_id['id']] = GetDraft(service, user_id, list_draft_id['id'])
+        subject = ""
+        print drafts
+        # print messages[list_messages_id['id']]['payload']['headers'][16]
+        if drafts[list_draft_id['id']]['payload']['headers'][16][u'name'] == 'Subject':
+            subject = drafts[list_draft_id['id']]['payload']['headers'][16][u'value']
+
+            if len(subject) == 0:
+                s = drafts[list_draft_id['id']]['snippet'].encode('ascii', 'ignore').decode(
+                    'ascii')
+                all_subjects += "No Subject " + drafts[list_draft_id['id']]['snippet'].encode('ascii',
+                                                                                                'ignore').decode(
+                    'ascii') + '\n'
+
+            else:
+                all_subjects += "" + subject + '\n'
+
+        else:
+            for headers in drafts[list_draft_id['id']]['payload']['headers']:
+
+                if headers[u'name'] == 'Subject':
+                    subject = headers[u'value']
+                    if len(subject) == 0:
+                        all_subjects += "No Subject ... content is " + drafts[list_draft_id['id']][
+                            'snippet'].encode('ascii',
+                                              'ignore').decode(
+                            'ascii') + '\n'
+                    else:
+                        all_subjects += " " + subject + '\n'
+                    break
+        if len(subject) == 0:
+            subj_id_mapping[list_draft_id['id']] = "No Subject"
+        else:
+            subj_id_mapping[list_draft_id['id']] = subject
+
+    print all_subjects
+    f = open(settings.TEXT_TO_SPEECH_FILE_NAME, 'w')
+    f.write(all_subjects)
+    for x in subj_id_mapping:
+        print subj_id_mapping[x]
+    return subj_id_mapping
