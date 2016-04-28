@@ -7,7 +7,8 @@ import os
 import re
 from specialGmail.views.gmail_functions import authenticateUser, unreadMessages, CreateMessage, SendMessage, \
     GetSubjects, \
-    DeleteMessage, ListMessagesWithLabels, readTopMails, readTopUnreadMails, CreateDraft, GetDraftSubjects, GetDraft
+    DeleteMessage, ListMessagesWithLabels, readTopMails, readTopUnreadMails, CreateDraft, GetDraftSubjects, GetDraft, \
+    DeleteDraft
 import difflib
 
 read_settimgs = settings.READ_INSTRUCTION_SETTINGS
@@ -178,43 +179,44 @@ def start_reading(sc, last_read_time=0, subj_id_mapping={}, to_mail_ids=[], subj
                 # ..Finding the IDS and CREATING MAPPINGS
 
                 elif "draft" in x and "delete" in x and "subject" not in x:
-                    GetDraft(service,'me',1532764308820449078)
-                    # del_mail_ids = re.findall(r'[\w\.-]+@[\w\.-]+', lines[0])
-                    # f = open(settings.TEXT_TO_SPEECH_FILE_NAME, 'w')
-                    # f.write("which message u want to delete ? Here are few options :")
-                    # f.close()
-                    # del_ids = ""
-                    # for ids in del_mail_ids:
-                    #     del_ids += ids + " "
-                    # query = ""
-                    # if "unread" in x:
-                    #     query = 'label:unread ' + del_ids
-                    # elif "read" in x:
-                    #     query = 'label:read ' + del_ids
-                    # else:
-                    #     query = del_ids
-                    # subj_id_mapping = GetDraftSubjects(service, 'me', query)
-                    # print subj_id_mapping
+                    # GetDraft(service,'me',1532764308820449078)
+                    del_mail_ids = re.findall(r'[\w\.-]+@[\w\.-]+', lines[0])
+                    f = open(settings.TEXT_TO_SPEECH_FILE_NAME, 'w')
+                    f.write("which draft do u want to delete ? Here are few options :")
+                    f.close()
+                    del_ids = ""
+                    for ids in del_mail_ids:
+                        del_ids += ids + " "
+                    query = ""
+                    if "unread" in x:
+                        query = 'label:unread ' + del_ids
+                    elif "read" in x:
+                        query = 'label:read ' + del_ids
+                    else:
+                        query = del_ids
 
-                # elif "draft" in x and "delete" in x and "subject" in x:
-                #     f = open(settings.SPEECH_TO_TEXT_FILE_NAME, 'r')
-                #     lines = f.readlines()
-                #     print lines
-                #     max = 0.0
-                #     del_id = ''
-                #     print subj_id_mapping
-                #     for x in subj_id_mapping:
-                #         print x, "outer loop", difflib.SequenceMatcher(None, subj_id_mapping[x].split(' '),
-                #                                                        lines[0].split('+')).ratio()
-                #         if difflib.SequenceMatcher(None, subj_id_mapping[x].split(' '),
-                #                                    lines[0].split('+')).ratio() > max:
-                #             print del_id, max, x
-                #             max = difflib.SequenceMatcher(None, subj_id_mapping[x].split(' '),
-                #                                           lines[0].split('+')).ratio()
-                #             del_id = x
-                #
-                #     if del_id != '':
-                #         DeleteMessage(service, 'me', del_id)
+                    subj_id_mapping = GetDraftSubjects(service, 'me', query)
+                    print subj_id_mapping
+
+                elif "draft" in x and "delete" in x and "subject" in x:
+                    f = open(settings.SPEECH_TO_TEXT_FILE_NAME, 'r')
+                    lines = f.readlines()
+                    print lines
+                    max = 0.0
+                    del_id = ''
+                    print subj_id_mapping
+                    for x in subj_id_mapping:
+                        print x, "outer loop", difflib.SequenceMatcher(None, subj_id_mapping[x].split(' '),
+                                                                       lines[0].split('+')).ratio()
+                        if difflib.SequenceMatcher(None, subj_id_mapping[x].split(' '),
+                                                   lines[0].split('+')).ratio() > max:
+                            print del_id, max, x
+                            max = difflib.SequenceMatcher(None, subj_id_mapping[x].split(' '),
+                                                          lines[0].split('+')).ratio()
+                            del_id = x
+
+                    if del_id != '':
+                        DeleteDraft(service, 'me', del_id)
 
             f.close()
 

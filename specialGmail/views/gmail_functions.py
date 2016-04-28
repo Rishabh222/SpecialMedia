@@ -364,10 +364,13 @@ def CreateDraft(service, user_id, message_body):
 
 def ListDrafts(service, user_id, query):
     try:
-        response = service.users().drafts().list(userId=user_id).execute()
+        try:
+            response = service.users().drafts().list(userId=user_id).execute()
+        except Exception as e:
+            print e
         drafts = response['drafts']
-        for draft in drafts:
-            print 'Draft id: %s' % draft['id']
+        # for draft in drafts:
+        #     print 'Draft id: %s' % draft['id']
         return drafts
     except errors.HttpError, error:
         print 'An error occurred: %s' % error
@@ -375,9 +378,12 @@ def ListDrafts(service, user_id, query):
 
 def GetDraft(service, user_id, draft_id):
     try:
-        print user_id,draft_id
-        draft = service.users().drafts().get(user_id=user_id, id=draft_id).execute()
-        print 'Draft id: %s\nDraft message: %s' % (draft['id'], draft['message'])
+        # print user_id,draft_id
+        try:
+            draft = service.users().drafts().get(userId=user_id, id=draft_id).execute()
+        except Exception as e:
+            print e
+        # print 'Draft id: %s\nDraft message: %s' % (draft['id'], draft['message'])
 
         return draft
     except errors.HttpError, error:
@@ -386,36 +392,36 @@ def GetDraft(service, user_id, draft_id):
 
 def GetDraftSubjects(service, user_id, query):
     list_draft_ids = ListDrafts(service, user_id, query)
-    print list_draft_ids
+    # print list_draft_ids
     drafts = {}
     all_subjects = ""
     subj_id_mapping = {}
     for list_draft_id in list_draft_ids:
-        print list_draft_id['id']
+        # print list_draft_id['id']
         drafts[list_draft_id['id']] = GetDraft(service, user_id, list_draft_id['id'])
         subject = ""
-        print drafts
-        # print messages[list_messages_id['id']]['payload']['headers'][16]
-        if drafts[list_draft_id['id']]['payload']['headers'][16][u'name'] == 'Subject':
-            subject = drafts[list_draft_id['id']]['payload']['headers'][16][u'value']
+        # print drafts[list_draft_id['id']]['message']['payload']['headers'][5]
+        if drafts[list_draft_id['id']]['message']['payload']['headers'][5][u'name'] == 'Subject':
+            subject = drafts[list_draft_id['id']]['message']['payload']['headers'][5][u'value']
 
             if len(subject) == 0:
-                s = drafts[list_draft_id['id']]['snippet'].encode('ascii', 'ignore').decode(
+                s = drafts[list_draft_id['id']]['message']['snippet'].encode('ascii', 'ignore').decode(
                     'ascii')
-                all_subjects += "No Subject " + drafts[list_draft_id['id']]['snippet'].encode('ascii',
-                                                                                                'ignore').decode(
+                all_subjects += "No Subject " + drafts[list_draft_id['id']]['message']['snippet'].encode('ascii',
+                                                                                                         'ignore').decode(
                     'ascii') + '\n'
+
 
             else:
                 all_subjects += "" + subject + '\n'
 
         else:
-            for headers in drafts[list_draft_id['id']]['payload']['headers']:
+            for headers in drafts[list_draft_id['id']]['message']['payload']['headers']:
 
                 if headers[u'name'] == 'Subject':
                     subject = headers[u'value']
                     if len(subject) == 0:
-                        all_subjects += "No Subject ... content is " + drafts[list_draft_id['id']][
+                        all_subjects += "No Subject ... content is " + drafts[list_draft_id['id']]['message'][
                             'snippet'].encode('ascii',
                                               'ignore').decode(
                             'ascii') + '\n'
@@ -433,3 +439,11 @@ def GetDraftSubjects(service, user_id, query):
     for x in subj_id_mapping:
         print subj_id_mapping[x]
     return subj_id_mapping
+
+
+def DeleteDraft(service, user_id, draft_id):
+    try:
+        service.users().drafts().delete(userId=user_id, id=draft_id).execute()
+        print 'Draft with id: %s deleted successfully.' % draft_id
+    except errors.HttpError, error:
+        print 'An error occurred: %s' % error
