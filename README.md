@@ -44,3 +44,12 @@ Setup
 ```
     python manage.py get_Instructions
 ```
+
+```
+    python manage.py start_reading
+```
+
+```
+    python manage.py runserver <ip>:<port>
+```
+
