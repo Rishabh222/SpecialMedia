@@ -118,6 +118,8 @@ def start_reading(sc, last_read_time=0, subj_id_mapping={}, to_mail_ids=[], subj
                         print "mail sent"
                         f = open(settings.TEXT_TO_SPEECH_FILE_NAME, 'w')
                         f.write("Mail sent to " + " ".join(to_mail_ids))
+                        to_mail_ids=[]
+                        subject=""
                         f.close()
                     else:
                         f = open(settings.TEXT_TO_SPEECH_FILE_NAME, 'w')
@@ -174,6 +176,7 @@ def start_reading(sc, last_read_time=0, subj_id_mapping={}, to_mail_ids=[], subj
 
                     if del_id != '':
                         DeleteMessage(service, 'me', del_id)
+                        subj_id_mapping={}
 
                 # DELETION OF DRAFT
                 # ..Finding the IDS and CREATING MAPPINGS
@@ -217,6 +220,7 @@ def start_reading(sc, last_read_time=0, subj_id_mapping={}, to_mail_ids=[], subj
 
                     if del_id != '':
                         DeleteDraft(service, 'me', del_id)
+                        subj_id_mapping={}
 
             f.close()
 
